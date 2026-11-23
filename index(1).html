@@ -1,0 +1,107 @@
+<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>سرجة ابن سينا</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.0/dist/umd/supabase.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--g:#1f4d36;--gold:#c9a24b;--bg:#f7f1e3;--card:#fffdf7;--tx:#1d2b22;--mu:#6b7468;--bd:#e5dcc3;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#101a14;--card:#18261d;--tx:#f1ead6;--mu:#a5ad9f;--bd:#2b3d30;color-scheme:dark}}
+:root[data-theme=dark]{--bg:#101a14;--card:#18261d;--tx:#f1ead6;--mu:#a5ad9f;--bd:#2b3d30;color-scheme:dark}
+html,body{margin:0;background:var(--bg);color:var(--tx);font-family:Cairo,Tahoma,sans-serif}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--g);color:#fff;padding:10px 14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;border-bottom:3px solid var(--gold)}
+nav{display:flex;gap:6px}nav button,.chips button,.sub button{border:1px solid var(--gold);background:transparent;color:inherit;border-radius:20px;padding:5px 12px;font:inherit;cursor:pointer}
+header nav button{color:#fff}.on{background:var(--gold)!important;color:#1d2b22!important}
+main{max-width:900px;margin:0 auto;padding:12px}.m{color:var(--mu)}
+input,select,textarea{width:100%;box-sizing:border-box;padding:9px;margin:4px 0;border:1px solid var(--bd);border-radius:10px;background:var(--card);color:var(--tx);font:inherit}
+.chips,.sub{display:flex;gap:6px;overflow-x:auto;padding:6px 0}.chips button,.sub button{color:var(--tx);white-space:nowrap}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:10px;margin-bottom:8px}.grid .card{margin:0}
+.card img,.ph{width:100%;height:130px;object-fit:cover;border-radius:10px;background:var(--bd);display:flex;align-items:center;justify-content:center;font-size:40px}
+h3{margin:8px 0 2px;font-size:16px}.tag{background:var(--gold);color:#1d2b22;border-radius:8px;font-size:11px;padding:1px 6px;margin-inline-start:6px}
+.pri{width:100%;background:var(--g);color:#fff;border:0;border-radius:10px;padding:10px;font:inherit;cursor:pointer}.pri:disabled{opacity:.5}
+.btn{background:var(--bd);color:var(--tx);border:0;border-radius:8px;padding:5px 10px;font:inherit;cursor:pointer}.row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+.low{color:#b3261e;font-size:12px}#t{position:fixed;bottom:calc(16px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);background:var(--g);color:#fff;padding:8px 16px;border-radius:20px;display:none;z-index:9}
+.wa{position:fixed;bottom:calc(16px + env(safe-area-inset-bottom,0px));inset-inline-end:14px;background:#25d366;color:#fff;border-radius:50%;width:52px;height:52px;display:flex;align-items:center;justify-content:center;font-size:26px;text-decoration:none}
+</style></head><body><div id="app"></div><div id="t"></div>
+<script>
+const $=s=>document.querySelector(s),E=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])),f=n=>(+n).toLocaleString('ar-EG',{maximumFractionDigits:2})+' ج.م';
+const ST=['جديد','قيد التجهيز','في الطريق','مكتمل','ملغي'];
+let db,user,admin=false,uid='x',P=[],mine=[],inbox=[],cart=[],view='shop',tab='prod',cat='',q='',draft=null,gp={},form={pay:'نقدًا عند الاستلام'},delId='',
+cfg={name:'سرجة ابن سينا',wa:'',fee:0,min:0,low:5,cats:['التوابل والبهارات','الأعشاب والعطارة','الحبوب والبقوليات','الأرز','المكرونة','منتجات العلافة','الزيوت الطبيعية','الطحينة والعسل','المنتجات الغذائية','العروض والخصومات']};
+function toast(m){const t=$('#t');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',2800)}
+const SB_URL='https://dyqkpsdnbundjzmcthld.supabase.co',SB_KEY='sb_publishable_erE-n5R2cXc74qPne0sn8A_D0N3SPXu',IMG=id=>SB_URL+'/storage/v1/object/public/img/'+id;
+let sb;
+const watch=go=>{const ch=sb.channel('w'+Math.random()).on('postgres_changes',{event:'*',schema:'public',table:'docs'},go).subscribe(),t=setInterval(go,30000);return()=>{sb.removeChannel(ch);clearInterval(t)}};
+const ref=p=>({id:p.split('/').pop(),
+async set(d){const{error}=await sb.from('docs').upsert({path:p,data:d,updated_at:new Date().toISOString()});if(error)throw error},
+async update(d){const{data}=await sb.from('docs').select('data').eq('path',p).maybeSingle();await this.set({...(data?.data||{}),...d})},
+async delete(){const{error}=await sb.from('docs').delete().eq('path',p);if(error)throw error},
+onSnapshot(n){const go=async()=>{const{data}=await sb.from('docs').select('data').eq('path',p).maybeSingle();n(data?{exists:true,data:()=>data.data}:{exists:false})};go();return watch(go)}});
+const col=p=>({doc:id=>ref(p+'/'+(id||crypto.randomUUID())),
+onSnapshot(n){const go=async()=>{const{data}=await sb.from('docs').select('path,data').like('path',p+'/%');const r=(data||[]).filter(x=>!x.path.slice(p.length+1).includes('/'));n({size:r.length,docs:r.map(x=>({id:x.path.split('/').pop(),exists:true,data:()=>x.data}))})};go();return watch(go)}});
+async function auth(){sb=supabase.createClient(SB_URL,SB_KEY);let{data:{session}}=await sb.auth.getSession();if(!session){const r=await sb.auth.signInAnonymously();if(r.error)throw r.error;session=r.data.session}
+uid=session.user.id;db={doc:ref,collection:col};
+if(!session.user.is_anonymous){const{data}=await sb.from('admins').select('user_id').eq('user_id',uid).maybeSingle();admin=!!data}}
+async function doLogin(){const email=$('#em')?.value?.trim(),password=$('#pw')?.value;if(!email||!password)return toast('اكتب البريد الإلكتروني وكلمة المرور');const{data:loginData,error:loginError}=await sb.auth.signInWithPassword({email,password});if(loginError){console.error('Login error:',loginError);return toast('تعذر تسجيل الدخول: '+loginError.message)}const signedUser=loginData.user;if(!signedUser)return toast('تم تسجيل الدخول لكن تعذر قراءة بيانات الحساب');const{data:adminRow,error:adminError}=await sb.from('admins').select('user_id').eq('user_id',signedUser.id).maybeSingle();if(adminError){console.error('Admin check error:',adminError);return toast('تم تسجيل الدخول لكن فشل فحص صلاحية الإدارة: '+adminError.message)}if(!adminRow)return toast('تم تسجيل الدخول، لكن هذا الحساب غير مضاف كمدير');uid=signedUser.id;admin=true;view='admin';toast('تم تسجيل الدخول بنجاح');render()}
+async function logout(){await sb.auth.signOut();location.reload()}
+const loginV=()=>`<div class=card><h3>دخول الإدارة</h3><input id=em type=email placeholder="البريد الإلكتروني"><input id=pw type=password placeholder="كلمة المرور"><button class=pri onclick="doLogin()">دخول</button></div>`;
+(async()=>{try{await auth()}catch(e){console.error(e);db=null}
+if(!db){render();return}
+db.collection('products').onSnapshot(s=>{P=s.docs.map(d=>({id:d.id,...d.data()}));render()});
+db.doc('cfg/main').onSnapshot(s=>{if(s.exists)cfg={...cfg,...s.data()};render()});
+db.doc('inbox/'+uid).onSnapshot(s=>{mine=s.exists?(s.data().orders||[]):[];render()});
+if(admin)db.collection('inbox').onSnapshot(s=>{inbox=s.docs.map(d=>({id:d.id,...d.data()}));render()});
+render()})();
+const tb=(v,t)=>`<button class="${view==v?'on':''}" onclick="view='${v}';render()">${t}</button>`;
+function render(){const a=$('#app');if(document.activeElement?.matches('input,textarea,select')&&db)return;
+if(!db){a.innerHTML='<main><p class=m>تعذر الاتصال بقاعدة البيانات. راجع إعداد Supabase في ملف التعليمات.</p></main>';return}
+const n=cart.reduce((s,c)=>s+c.n,0);
+a.innerHTML=`<header><b>🌿 ${E(cfg.name)}</b><nav>${tb('shop','المتجر')}${tb('cart','السلة ('+n+')')}${admin?tb('admin','الإدارة')+'<button onclick="logout()">خروج</button>':tb('login','🔐')}</nav></header><main>${view=='shop'?shop():view=='cart'?cartV():view=='login'?loginV():adm()}</main>${cfg.wa?`<a class=wa href="https://wa.me/${cfg.wa.replace(/\D/g,'')}" target=_blank>💬</a>`:''}`;
+if(view=='shop')lst()}
+const shop=()=>`<input placeholder="ابحث عن منتج…" oninput="q=this.value;lst()" value="${E(q)}"><div class=chips><button class="${cat?'':'on'}" onclick="setCat(-1)">الكل</button>${cfg.cats.map((c,i)=>`<button class="${cat==c?'on':''}" onclick="setCat(${i})">${E(c)}</button>`).join('')}</div><div id=list class=grid></div>`;
+function setCat(i){cat=i<0?'':cfg.cats[i];render()}
+function lst(){const l=$('#list');if(!l)return;const r=P.filter(p=>!p.hidden&&(!cat||p.cat==cat)&&(!q||p.name.includes(q)));l.innerHTML=r.length?r.map(card).join(''):'<p class=m>لا توجد منتجات بعد.</p>'}
+function card(p){const o=p.opts||[],out=(p.stock||0)<=0;return `<div class=card>${p.img?`<img src="${IMG(p.img)}" alt="">`:'<div class=ph>🌿</div>'}<h3>${E(p.name)}${p.tag?`<span class=tag>${E(p.tag)}</span>`:''}</h3><p class=m>${E(p.desc)}</p><select id="o${p.id}">${o.map((x,i)=>`<option value=${i}>${E(x.l)} — ${f(x.p)}${x.old?' (بدل '+f(x.old)+')':''}</option>`).join('')}</select><button class=pri ${out||!o.length?'disabled':''} onclick="add('${p.id}')">${out?'غير متوفر':'أضف للسلة'}</button></div>`}
+function add(id){const oi=+$('#o'+id).value,c=cart.find(x=>x.pid==id&&x.oi==oi);c?c.n++:cart.push({pid:id,oi,n:1});toast('تمت الإضافة');render()}
+const lines=()=>cart.map(c=>{const p=P.find(x=>x.id==c.pid),o=p?.opts?.[c.oi];return p&&o?{p,o,n:c.n,c}:null}).filter(Boolean);
+const sub=()=>lines().reduce((s,l)=>s+l.o.p*l.n,0);
+function qty(i,d){const c=cart[i];c.n+=d;if(c.n<1)cart.splice(i,1);render()}
+function cartV(){const L=lines(),s=sub();return `${L.length?L.map(l=>`<div class="card row"><span>${E(l.p.name)} — ${E(l.o.l)}<br><b>${f(l.o.p*l.n)}</b></span><span><button class=btn onclick="qty(${cart.indexOf(l.c)},-1)">−</button> ${l.n} <button class=btn onclick="qty(${cart.indexOf(l.c)},1)">+</button></span></div>`).join('')+`<p>المجموع: ${f(s)} · التوصيل: ${f(cfg.fee)}<br><b>الإجمالي: ${f(s+ +cfg.fee)}</b>${cfg.min>s?`<br><span class=low>الحد الأدنى للطلب ${f(cfg.min)}</span>`:''}</p>
+<input placeholder="الاسم" value="${E(form.name)}" oninput="form.name=this.value"><input placeholder="رقم الهاتف" inputmode=tel value="${E(form.phone)}" oninput="form.phone=this.value"><input placeholder="العنوان والمنطقة" value="${E(form.addr)}" oninput="form.addr=this.value"><textarea placeholder="ملاحظات" oninput="form.notes=this.value">${E(form.notes)}</textarea>
+<select onchange="form.pay=this.value"><option>نقدًا عند الاستلام</option><option ${form.pay=='الدفع في المحل'?'selected':''}>الدفع في المحل</option></select>
+<button class=pri onclick="submit()">تأكيد الطلب</button><button class=pri style="background:#25d366;margin-top:6px" onclick="wa()">إرسال عبر واتساب</button>`:'<p class=m>السلة فارغة.</p>'}
+${mine.length?'<h3>طلباتي</h3>'+mine.map(o=>`<div class=card><b>${E(o.no)}</b> — ${E(o.status)} — ${f(o.total)}</div>`).join(''):''}`}
+function msg(){const L=lines();return `طلب جديد من ${cfg.name}\n`+L.map(l=>`• ${l.p.name} (${l.o.l}) × ${l.n} = ${f(l.o.p*l.n)}`).join('\n')+`\nالتوصيل: ${f(cfg.fee)}\nالإجمالي: ${f(sub()+ +cfg.fee)}\nالاسم: ${form.name||''}\nالهاتف: ${form.phone||''}\nالعنوان: ${form.addr||''}\nملاحظات: ${form.notes||''}`}
+function wa(){if(!cfg.wa)return toast('رقم واتساب غير مضبوط بعد');window.open('https://wa.me/'+cfg.wa.replace(/\D/g,'')+'?text='+encodeURIComponent(msg()),'_blank')}
+async function submit(){if(!form.name||!form.phone||!form.addr)return toast('أكمل الاسم والهاتف والعنوان');const s=sub();if(!s)return;if(s<cfg.min)return toast('الحد الأدنى '+f(cfg.min));
+const no='SIS-'+Date.now().toString(36).toUpperCase(),o={no,ts:Date.now(),status:'جديد',name:form.name,phone:form.phone,addr:form.addr,notes:form.notes||'',pay:form.pay,items:lines().map(l=>({id:l.p.id,n:l.p.name,o:l.o.l,w:l.o.w,q:l.n,p:l.o.p})),sub:s,fee:+cfg.fee,total:s+ +cfg.fee};
+try{await db.doc('inbox/'+uid).set({name:form.name,phone:form.phone,orders:[o,...mine].slice(0,50)});cart=[];view='cart';toast('تم تسجيل طلبك رقم '+no);render()}catch(e){toast('تعذر حفظ الطلب')}}
+/* ---------- admin ---------- */
+function adm(){const T=[['prod','المنتجات'],['price','الأسعار'],['ord','الطلبات'],['set','الإعدادات']];
+return `<div class=sub>${T.map(t=>`<button class="${tab==t[0]?'on':''}" onclick="tab='${t[0]}';draft=null;render()">${t[1]}</button>`).join('')}</div>`+(tab=='prod'?(draft?pform():plist()):tab=='price'?prices():tab=='ord'?orders():settings())}
+const otxt=o=>(o||[]).map(x=>[x.l,x.p,x.w,x.old||''].join('|').replace(/\|+$/,'')).join('\n');
+const popts=t=>t.split('\n').map(l=>l.split('|').map(s=>s.trim())).filter(a=>a[0]&&+a[1]>0).map(a=>({l:a[0],p:+a[1],w:+a[2]||1,...(+a[3]>0?{old:+a[3]}:{})}));
+const plist=()=>`<button class=pri onclick="draft={cat:cfg.cats[0],stock:0,optText:'ربع كيلو|0|0.25\nنصف كيلو|0|0.5\nكيلو|0|1'};render()">+ إضافة صنف</button>`+P.map(p=>`<div class=card><div class=row><b>${E(p.name)}</b><span class=m>${E(p.cat)} · مخزون: ${p.stock||0}${(p.stock||0)<=cfg.low?' <span class=low>منخفض</span>':''}${p.hidden?' · مخفي':''}</span></div><div class=row><button class=btn onclick="edit('${p.id}')">تعديل</button><button class=btn onclick="dup('${p.id}')">نسخ</button><button class=btn onclick="hide('${p.id}')">${p.hidden?'إظهار':'إخفاء'}</button><button class=btn onclick="del('${p.id}')">${delId==p.id?'تأكيد الحذف؟':'حذف'}</button></div></div>`).join('');
+function edit(id){const p=P.find(x=>x.id==id);draft={...p,optText:otxt(p.opts)};render()}
+function dup(id){const p=P.find(x=>x.id==id);draft={...p,id:undefined,name:p.name+' (نسخة)',optText:otxt(p.opts)};render()}
+function hide(id){const p=P.find(x=>x.id==id);db.doc('products/'+id).update({hidden:!p.hidden})}
+async function del(id){if(delId!=id){delId=id;return render()}delId='';await db.doc('products/'+id).delete();toast('تم الحذف')}
+const pform=()=>`<div class=card><input placeholder="اسم الصنف" value="${E(draft.name)}" oninput="draft.name=this.value"><select onchange="draft.cat=this.value">${cfg.cats.map(c=>`<option ${c==draft.cat?'selected':''}>${E(c)}</option>`).join('')}</select><textarea placeholder="الوصف" oninput="draft.desc=this.value">${E(draft.desc)}</textarea>
+${draft.img?`<img src="${IMG(draft.img)}" alt="">`:''}<input type=file accept="image/*" onchange="up(this)">
+<p class=m>الأسعار (سطر لكل خيار: الاسم|السعر|الوزن بالكيلو أو 1 للعبوة|السعر قبل الخصم اختياري)</p><textarea rows=5 oninput="draft.optText=this.value">${E(draft.optText)}</textarea>
+<input type=number step=any placeholder="الكمية المتاحة (بالكيلو أو بالعبوات)" value="${draft.stock??''}" oninput="draft.stock=+this.value"><input placeholder="وسم (جديد / الأكثر مبيعًا / مميز)" value="${E(draft.tag)}" oninput="draft.tag=this.value">
+<button class=pri onclick="saveP()">حفظ ونشر</button><button class=btn style="margin-top:6px" onclick="draft=null;render()">إلغاء</button></div>`;
+async function up(i){try{const n=crypto.randomUUID(),f=i.files[0],{error}=await sb.storage.from('img').upload(n,f,{contentType:f.type});if(error)throw error;draft.img=n;i.blur();render()}catch(e){toast('فشل رفع الصورة')}}
+async function saveP(){const opts=popts(draft.optText||'');if(!draft.name||!opts.length)return toast('اكتب الاسم وسعرًا واحدًا على الأقل');
+const d={name:draft.name,cat:draft.cat,desc:draft.desc||'',img:draft.img||'',stock:+draft.stock||0,tag:draft.tag||'',hidden:!!draft.hidden,opts};
+try{await(draft.id?db.doc('products/'+draft.id):db.collection('products').doc()).set(d);draft=null;toast('تم الحفظ والنشر');render()}catch(e){toast('تعذر الحفظ')}}
+function prices(){const rows=P.flatMap(p=>(p.opts||[]).map((o,i)=>({p,o,i,k:p.id+'_'+i})));
+return `<div class="card row"><input style="width:90px" type=number id=pc placeholder="%"><select id=pcat style="width:auto"><option value="">كل الأقسام</option>${cfg.cats.map(c=>`<option>${E(c)}</option>`).join('')}</select><button class=btn onclick="pct()">تطبيق زيادة/خفض</button></div>
+<div class=card>${rows.map(r=>`<div class=row><span>${E(r.p.name)} — ${E(r.o.l)}</span><input type=number step=any style="width:100px" value="${gp[r.k]??r.o.p}" oninput="gp['${r.k}']=+this.value"></div>`).join('')||'<p class=m>لا منتجات.</p>'}</div><button class=pri onclick="saveG()">حفظ كل التغييرات</button>`}
+function pct(){const v=+$('#pc').value,c=$('#pcat').value;if(!v)return;P.filter(p=>!c||p.cat==c).forEach(p=>(p.opts||[]).forEach((o,i)=>gp[p.id+'_'+i]=Math.round(o.p*(1+v/100)*100)/100));document.activeElement.blur();render()}
+async function saveG(){try{for(const p of P){if(!(p.opts||[]).some((o,i)=>gp[p.id+'_'+i]!=null))continue;await db.doc('products/'+p.id).update({opts:p.opts.map((o,i)=>({...o,p:gp[p.id+'_'+i]??o.p}))})}gp={};toast('تم نشر الأسعار');render()}catch(e){toast('تعذر الحفظ')}}
+function orders(){const all=inbox.flatMap(d=>(d.orders||[]).map(o=>({...o,u:d.id}))).sort((a,b)=>b.ts-a.ts),day=new Date().toDateString(),today=all.filter(o=>new Date(o.ts).toDateString()==day&&o.status!='ملغي');
+return `<div class=card>طلبات جديدة: <b>${all.filter(o=>o.status=='جديد').length}</b> · طلبات اليوم: <b>${today.length}</b> · مبيعات اليوم: <b>${f(today.reduce((s,o)=>s+o.total,0))}</b></div>`+all.map(o=>`<div class=card><div class=row><b>${E(o.no)}</b><span class=m>${new Date(o.ts).toLocaleString('ar-EG')}</span></div><p>${E(o.name)} · ${E(o.phone)}<br>${E(o.addr)}${o.notes?'<br>'+E(o.notes):''}<br>${E(o.pay)}</p><p class=m>${o.items.map(i=>`${E(i.n)} (${E(i.o)}) × ${i.q}`).join('<br>')}</p><b>${f(o.total)}</b><select onchange="setSt('${o.u}','${o.no}',this.value)">${ST.map(s=>`<option ${s==o.status?'selected':''}>${s}</option>`).join('')}</select></div>`).join('')}
+async function setSt(u,no,s){const d=inbox.find(x=>x.id==u),o=d.orders.find(x=>x.no==no);try{if(o.status=='جديد'&&s=='قيد التجهيز')for(const i of o.items){const p=P.find(x=>x.id==i.id);if(p)await db.doc('products/'+p.id).update({stock:Math.max(0,Math.round(((p.stock||0)-i.w*i.q)*1000)/1000)})}
+await db.doc('inbox/'+u).update({orders:d.orders.map(x=>x.no==no?{...x,status:s}:x)});toast('تم تحديث الحالة')}catch(e){toast('تعذر التحديث')}}
+const settings=()=>`<div class=card><input placeholder="اسم المحل" value="${E(cfg.name)}" oninput="cfg.name=this.value"><input placeholder="رقم واتساب بالصيغة الدولية" inputmode=tel value="${E(cfg.wa)}" oninput="cfg.wa=this.value"><input type=number placeholder="رسوم التوصيل" value="${cfg.fee}" oninput="cfg.fee=+this.value"><input type=number placeholder="الحد الأدنى للطلب" value="${cfg.min}" oninput="cfg.min=+this.value"><input type=number placeholder="حد تنبيه المخزون" value="${cfg.low}" oninput="cfg.low=+this.value"><p class=m>الأقسام (سطر لكل قسم، الترتيب كما هو)</p><textarea rows=8 oninput="cfg.cats=this.value.split('\n').map(s=>s.trim()).filter(Boolean)">${E(cfg.cats.join('\n'))}</textarea><button class=pri onclick="saveC()">حفظ الإعدادات</button></div>`;
+async function saveC(){try{await db.doc('cfg/main').set(cfg);toast('تم الحفظ');render()}catch(e){toast('تعذر الحفظ')}}
+</script></body></html>
